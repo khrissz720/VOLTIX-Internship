@@ -94,21 +94,7 @@ These insights support hospital performance monitoring and data-driven decision-
 - Insights.docx
 - charts/
 
-# 
 
-# These insights support hospital performance monitoring and data-driven decision-making.
-
-# 
-
-# \## Files
-
-# 
-
-# \- Hospital\_Data\_Cleaned.csv
-
-# \- Hospital\_Data\_Cleaning.py
-
-# \- Insights.docx
 
 # \- charts/
 
