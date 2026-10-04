@@ -1,0 +1,5 @@
+runtime_category,movie_count,average_rating,average_revenue,average_budget,average_profit
+Long (120-149 min),894,6.64,144907455.29,46383487.81,98523967.48
+Short (<90 min),705,5.42,38842769.58,14738909.94,24103859.64
+Standard (90-119 min),3023,6.03,65603717.26,25541187.65,40062529.61
+Very Long (150+ min),179,7.03,222605545.23,58209757.86,164395787.37

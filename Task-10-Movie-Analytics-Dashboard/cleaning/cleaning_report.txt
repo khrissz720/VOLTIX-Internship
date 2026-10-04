@@ -1,0 +1,33 @@
+TASK 10 - MOVIE ANALYTICS DASHBOARD
+DATA CLEANING REPORT
+============================================================
+
+Original rows: 4803
+Original columns: 20
+Duplicate rows: 0
+Missing release dates: 1
+Missing runtime values: 2
+Final rows: 4803
+Final columns: 20
+
+Final columns:
+- id
+- title
+- original_title
+- original_language
+- release_date
+- release_year
+- genres_clean
+- primary_genre
+- budget
+- revenue
+- profit
+- roi
+- runtime
+- runtime_category
+- popularity
+- vote_average
+- rating_category
+- vote_count
+- vote_count_category
+- status
