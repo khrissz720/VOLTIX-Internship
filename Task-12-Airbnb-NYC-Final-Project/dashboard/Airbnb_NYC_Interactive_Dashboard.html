@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airbnb NYC - Final Data Analysis Dashboard</title>
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-main: #0B1120;
+            --bg-panel: #111827;
+            --bg-card: #1F2937;
+            --text-main: #F9FAFB;
+            --text-muted: #9CA3AF;
+            --border-color: #374151;
+            
+            /* Colores de distritos y acentos */
+            --color-manhattan: #3B82F6;
+            --color-brooklyn: #F59E0B;
+            --color-queens: #10B981;
+            --color-bronx: #8B5CF6;
+            --color-staten: #EC4899;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar / Filtros */
+        aside {
+            width: 280px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-title span { color: #FF5A5F; }
+        .brand-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.4;}
+
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-group label { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .filter-group select, .filter-group input[type="range"] {
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);
+            background-color: var(--bg-card); color: var(--text-main); outline: none; font-size: 14px;
+        }
+        
+        .filter-val { font-size: 12px; color: var(--text-muted); text-align: right; }
+
+        .btn-reset {
+            background-color: transparent; border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 10px; border-radius: 6px; cursor: pointer;
+            font-weight: 600; transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-reset:hover:not(:disabled) { background-color: var(--bg-card); }
+        .btn-reset:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-load {
+            background-color: #FF5A5F; border: none; color: white; padding: 12px;
+            border-radius: 6px; cursor: pointer; font-weight: 600; text-align: center;
+            margin-top: auto; transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(255, 90, 95, 0.3);
+        }
+        .btn-load:hover { background-color: #E0484D; }
+        #csvFileInput { display: none; }
+
+        /* Contenido Principal */
+        main {
+            flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .top-header { display: flex; justify-content: space-between; align-items: flex-end; }
+        .top-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px;}
+        .top-header p { font-size: 14px; color: var(--text-muted); }
+
+        /* KPI Grid */
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .kpi-card {
+            background-color: var(--bg-card); padding: 20px; border-radius: 12px;
+            display: flex; align-items: center; gap: 16px; border: 1px solid var(--border-color);
+        }
+        .kpi-icon {
+            width: 48px; height: 48px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 20px; font-weight: bold;
+        }
+        .kpi-icon.blue { background-color: rgba(59, 130, 246, 0.2); color: var(--color-manhattan); }
+        .kpi-icon.green { background-color: rgba(16, 185, 129, 0.2); color: var(--color-queens); }
+        .kpi-icon.purple { background-color: rgba(139, 92, 246, 0.2); color: var(--color-bronx); }
+        .kpi-icon.orange { background-color: rgba(245, 158, 11, 0.2); color: var(--color-brooklyn); }
+        
+        .kpi-data h3 { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 4px; }
+        .kpi-data p { font-size: 24px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+        .kpi-data span { font-size: 11px; color: var(--text-muted); }
+
+        /* Charts Grid */
+        .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .chart-card {
+            background-color: var(--bg-card); border-radius: 12px; padding: 16px;
+            border: 1px solid var(--border-color); display: flex; flex-direction: column;
+        }
+        .chart-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-main); }
+        .chart-container { flex: 1; min-height: 280px; width: 100%; }
+
+        /* Estilo específico para esquivar el bloqueo del navegador de imágenes locales */
+        #chart-map {
+            /* Asegúrate de que la ruta coincida con la ubicación de tu imagen en tu carpeta */
+            background-image: url('../visualizations/New_York_City__2.png');
+            background-size: 100% 100%; 
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 8px;
+        }
+
+        /* Footer Insights */
+        .insights-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 10px; }
+        .insight-box { background-color: var(--bg-panel); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); }
+        .insight-box h3 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;}
+        .insight-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .insight-item h4 { font-size: 14px; margin-bottom: 8px; color: var(--text-main); display: flex; align-items: center; gap: 8px;}
+        .insight-item p { font-size: 12px; color: var(--text-muted); line-height: 1.5;}
+        
+        .recommendations ul { list-style: none; padding: 0; }
+        .recommendations li { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; display: flex; gap: 8px; line-height: 1.5; }
+        .recommendations li::before { content: "✓"; color: var(--color-queens); font-weight: bold; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar / Filters -->
+    <aside>
+        <div>
+            <div class="brand-title"><span>airbnb</span> NYC</div>
+            <div class="brand-subtitle">Final Data Analysis Project<br>Task 12 Dashboard</div>
+        </div>
+
+        <div class="filter-group">
+            <label>Tipo de alojamiento</label>
+            <select id="filter-room" disabled>
+                <option value="Todos">Todos</option>
+                <option value="Entire home/apt">Entire home/apt</option>
+                <option value="Private room">Private room</option>
+                <option value="Shared room">Shared room</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Distrito (Borough)</label>
+            <select id="filter-borough" disabled>
+                <option value="Todos">Todos</option>
+                <option value="Manhattan">Manhattan</option>
+                <option value="Brooklyn">Brooklyn</option>
+                <option value="Queens">Queens</option>
+                <option value="Bronx">Bronx</option>
+                <option value="Staten Island">Staten Island</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Precio máximo por noche</label>
+            <input type="range" id="filter-price" min="0" max="10000" step="50" value="10000" disabled>
+            <div class="filter-val">Hasta $<span id="val-price">10000</span></div>
+        </div>
+
+        <div class="filter-group">
+            <label>Mínimo de reseñas</label>
+            <input type="range" id="filter-reviews" min="0" max="650" step="10" value="0" disabled>
+            <div class="filter-val">Desde <span id="val-reviews">0</span> reseñas</div>
+        </div>
+
+        <button class="btn-reset" onclick="resetFilters()" disabled id="btn-reset">Restablecer filtros</button>
+
+        <label class="btn-load" for="csvFileInput">
+            📁 Cargar Dataset CSV
+            <input type="file" id="csvFileInput" accept=".csv">
+        </label>
+        <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 5px; line-height: 1.4;">
+            <span id="data-status">El archivo AB_NYC_2019_original.csv se encuentra en la carpeta <b>data/</b> de tu proyecto.</span>
+        </p>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+        <div class="top-header">
+            <div>
+                <h1>New York City</h1>
+                <p>Data Analysis Dashboard — Explora los patrones reales de los alojamientos en Nueva York (2019).</p>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon blue">🛏️</div>
+                <div class="kpi-data">
+                    <h3>Total de anuncios</h3>
+                    <p id="kpi-total">-</p>
+                    <span>Registros filtrados</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon green">$</div>
+                <div class="kpi-data">
+                    <h3>Precio mediano por noche</h3>
+                    <p id="kpi-median">-</p>
+                    <span>Excluye nulos/ceros</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon purple">⭐</div>
+                <div class="kpi-data">
+                    <h3>Total de reseñas</h3>
+                    <p id="kpi-reviews">-</p>
+                    <span>Acumulado de la selección</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon orange">👤</div>
+                <div class="kpi-data">
+                    <h3>Anfitriones únicos</h3>
+                    <p id="kpi-hosts">-</p>
+                    <span>Host IDs distintos</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Tipos de alojamiento</h3>
+                <div id="chart-room-type" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Anuncios por distrito</h3>
+                <div id="chart-borough" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Mapa de anuncios (Muestra espacial)</h3>
+                <div id="chart-map" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Distribución de Precios (≤ $1000)</h3>
+                <div id="chart-price-box" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Relación Precio vs. Reseñas</h3>
+                <div id="chart-scatter" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Top 5 Barrios más caros (Mediana)</h3>
+                <div id="chart-top-hoods" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Insights Footer -->
+        <div class="insights-grid">
+            <div class="insight-box">
+                <h3>💡 Notas del Análisis</h3>
+                <div class="insight-items">
+                    <div class="insight-item">
+                        <h4>Manejo de nulos</h4>
+                        <p>Los precios en 0 y los valores nulos en precio o reseñas se omiten estrictamente durante el cálculo de la mediana para evitar distorsiones analíticas.</p>
+                    </div>
+                    <div class="insight-item">
+                        <h4>Muestreo determinista</h4>
+                        <p>Para garantizar rendimiento sin perder representatividad, el mapa y el scatterplot utilizan una selección sistemática (paso fijo) al superar los 2,500 puntos.</p>
+                    </div>
+                    <div class="insight-item">
+                        <h4>Ausencia de aleatoriedad</h4>
+                        <p>El dashboard carga los registros literales de tu CSV local. Recargar la página con los mismos filtros producirá idénticos resultados siempre.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="insight-box recommendations">
+                <h3>🎯 Funcionalidades</h3>
+                <ul>
+                    <li>Sin servidores locales: Procesamiento nativo y seguro 100% en tu navegador con PapaParse.</li>
+                    <li>Cálculo de mediana adaptado matemáticamente a conjuntos pares e impares.</li>
+                    <li>El mapa proyecta la longitud y latitud exactamente sobre tu imagen "New_York_City__2.png".</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuración visual centralizada
+        const colors = {
+            'Manhattan': '#3B82F6',
+            'Brooklyn': '#F59E0B',
+            'Queens': '#10B981',
+            'Bronx': '#8B5CF6',
+            'Staten Island': '#EC4899',
+            'Entire home/apt': '#3B82F6',
+            'Private room': '#8B5CF6',
+            'Shared room': '#10B981',
+            'bg': '#1F2937',
+            'text': '#9CA3AF',
+            'grid': '#374151'
+        };
+
+        // NOTA IMPORTANTE: Transformamos el layout base en una función para evitar 
+        // que Plotly contamine los ejes de unos gráficos con otros
+        function getCommonLayout() {
+            return {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: colors.text, family: 'Inter, sans-serif' },
+                margin: { t: 10, r: 10, l: 40, b: 30 },
+                xaxis: { gridcolor: colors.grid, zerolinecolor: colors.grid },
+                yaxis: { gridcolor: colors.grid, zerolinecolor: colors.grid }
+            };
+        }
+
+        // Variables Globales Reales
+        let globalData = [];
+        let filteredData = [];
+
+        // Inicialización en estado vacío
+        function initEmptyState(message = "Selecciona el archivo CSV desde la carpeta data/ de tu proyecto para iniciar.") {
+            const emptyLayoutMsg = {
+                ...getCommonLayout(),
+                xaxis: { visible: false },
+                yaxis: { visible: false },
+                annotations: [{
+                    text: message,
+                    font: { size: 14, color: colors.text },
+                    showarrow: false,
+                    xref: 'paper', yref: 'paper',
+                    x: 0.5, y: 0.5
+                }]
+            };
+            const chartIds = ['chart-room-type', 'chart-borough', 'chart-map', 'chart-price-box', 'chart-scatter', 'chart-top-hoods'];
+            chartIds.forEach(id => {
+                Plotly.newPlot(id, [], emptyLayoutMsg, {staticPlot: true});
+            });
+            
+            document.getElementById('kpi-total').innerText = "-";
+            document.getElementById('kpi-median').innerText = "-";
+            document.getElementById('kpi-reviews').innerText = "-";
+            document.getElementById('kpi-hosts').innerText = "-";
+        }
+
+        // Función matemática para cálculo de mediana (incluye conjuntos pares)
+        function calculateMedian(arr) {
+            const validNumbers = arr.filter(n => n != null && !isNaN(n) && n > 0).sort((a, b) => a - b);
+            if (validNumbers.length === 0) return 0;
+            const mid = Math.floor(validNumbers.length / 2);
+            if (validNumbers.length % 2 === 0) {
+                return (validNumbers[mid - 1] + validNumbers[mid]) / 2;
+            } else {
+                return validNumbers[mid];
+            }
+        }
+
+        // Función para submuestreo determinista (Sin Math.random)
+        function deterministicSample(dataArray, maxPoints) {
+            if (dataArray.length <= maxPoints) return dataArray;
+            const step = Math.ceil(dataArray.length / maxPoints);
+            return dataArray.filter((_, index) => index % step === 0);
+        }
+
+        // Procesar datos tras seleccionarlos
+        function processData(parsedData) {
+            globalData = parsedData.map(d => ({
+                ...d,
+                price: parseFloat(d.price),
+                number_of_reviews: parseInt(d.number_of_reviews) || 0,
+                latitude: parseFloat(d.latitude),
+                longitude: parseFloat(d.longitude)
+            })).filter(d => d.neighbourhood_group != null && d.price != null); 
+            
+            document.getElementById('data-status').innerHTML = `<span style="color:var(--color-queens)">Dataset Cargado: ${globalData.length.toLocaleString()} registros</span>`;
+            
+            // Habilitar filtros
+            ['filter-room', 'filter-borough', 'filter-price', 'filter-reviews', 'btn-reset'].forEach(id => {
+                document.getElementById(id).disabled = false;
+            });
+
+            applyFilters();
+        }
+
+        // Carga de archivo manual (Seguro para doble clic local)
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('data-status').innerText = "Procesando registros localmente...";
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        processData(results.data);
+                    }
+                });
+            }
+        });
+
+        // Eventos de filtros
+        const filterControls = ['filter-room', 'filter-borough', 'filter-price', 'filter-reviews'];
+        filterControls.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if(id === 'filter-price') document.getElementById('val-price').innerText = e.target.value;
+                if(id === 'filter-reviews') document.getElementById('val-reviews').innerText = e.target.value;
+                applyFilters();
+            });
+        });
+
+        function resetFilters() {
+            document.getElementById('filter-room').value = 'Todos';
+            document.getElementById('filter-borough').value = 'Todos';
+            document.getElementById('filter-price').value = 10000;
+            document.getElementById('filter-reviews').value = 0;
+            document.getElementById('val-price').innerText = "10000";
+            document.getElementById('val-reviews').innerText = "0";
+            applyFilters();
+        }
+
+        // Filtrado Principal
+        function applyFilters() {
+            if (globalData.length === 0) return;
+
+            const fRoom = document.getElementById('filter-room').value;
+            const fBorough = document.getElementById('filter-borough').value;
+            const fPrice = parseFloat(document.getElementById('filter-price').value);
+            const fReviews = parseFloat(document.getElementById('filter-reviews').value);
+
+            filteredData = globalData.filter(d => {
+                if (fRoom !== 'Todos' && d.room_type !== fRoom) return false;
+                if (fBorough !== 'Todos' && d.neighbourhood_group !== fBorough) return false;
+                if (!isNaN(d.price) && d.price > fPrice) return false;
+                if (fReviews > 0 && d.number_of_reviews < fReviews) return false;
+                return true;
+            });
+
+            updateKPIs();
+            updateCharts();
+        }
+
+        function updateKPIs() {
+            if (filteredData.length === 0) {
+                document.getElementById('kpi-total').innerText = "0";
+                document.getElementById('kpi-median').innerText = "$0";
+                document.getElementById('kpi-reviews').innerText = "0";
+                document.getElementById('kpi-hosts').innerText = "0";
+                return;
+            }
+
+            document.getElementById('kpi-total').innerText = filteredData.length.toLocaleString();
+            
+            const medianPrice = calculateMedian(filteredData.map(d => d.price));
+            document.getElementById('kpi-median').innerText = `$${medianPrice.toFixed(0)}`;
+
+            const totalReviews = filteredData.reduce((acc, d) => acc + (d.number_of_reviews || 0), 0);
+            document.getElementById('kpi-reviews').innerText = totalReviews.toLocaleString();
+
+            const uniqueHosts = new Set(filteredData.filter(d => d.host_id != null).map(d => d.host_id)).size;
+            document.getElementById('kpi-hosts').innerText = uniqueHosts.toLocaleString();
+        }
+
+        function updateCharts() {
+            if (filteredData.length === 0) {
+                initEmptyState("No hay resultados para esta combinación de filtros.");
+                return;
+            }
+
+            let countsByRoom = {};
+            let countsByBorough = {};
+            let pricesByBorough = {};
+            let pricesByHood = {};
+
+            filteredData.forEach(d => {
+                if (d.room_type) {
+                    countsByRoom[d.room_type] = (countsByRoom[d.room_type] || 0) + 1;
+                }
+                if (d.neighbourhood_group) {
+                    countsByBorough[d.neighbourhood_group] = (countsByBorough[d.neighbourhood_group] || 0) + 1;
+                    if (!isNaN(d.price) && d.price > 0) {
+                        if (!pricesByBorough[d.neighbourhood_group]) pricesByBorough[d.neighbourhood_group] = [];
+                        pricesByBorough[d.neighbourhood_group].push(d.price);
+                    }
+                }
+                if (d.neighbourhood && !isNaN(d.price) && d.price > 0) {
+                    if (!pricesByHood[d.neighbourhood]) pricesByHood[d.neighbourhood] = [];
+                    pricesByHood[d.neighbourhood].push(d.price);
+                }
+            });
+
+            // 1. Gráfico de Donut (Tipos de alojamiento)
+            const roomData = [{
+                values: Object.values(countsByRoom),
+                labels: Object.keys(countsByRoom),
+                type: 'pie',
+                hole: 0.6,
+                marker: { colors: Object.keys(countsByRoom).map(k => colors[k] || '#888') },
+                textinfo: 'percent',
+                hoverinfo: 'label+value'
+            }];
+            Plotly.react('chart-room-type', roomData, { ...getCommonLayout(), showlegend: true, legend: {x: 1, y: 0.5}, margin: {t:0, b:0, l:0, r:0} });
+
+            // 2. Gráfico de Barras (Distritos)
+            let bKeys = Object.keys(countsByBorough).sort((a,b) => countsByBorough[b] - countsByBorough[a]);
+            const boroughData = [{
+                x: bKeys,
+                y: bKeys.map(k => countsByBorough[k]),
+                type: 'bar',
+                marker: { color: bKeys.map(k => colors[k] || colors.text) }
+            }];
+            Plotly.react('chart-borough', boroughData, getCommonLayout());
+
+            // 3. Mapa Geográfico Transparente sobre la imagen CSS
+            const mapValidData = filteredData.filter(d => !isNaN(d.latitude) && !isNaN(d.longitude));
+            const mapSample = deterministicSample(mapValidData, 2500);
+            
+            const mapData = [{
+                type: 'scatter',
+                x: mapSample.map(d => d.longitude),
+                y: mapSample.map(d => d.latitude),
+                mode: 'markers',
+                marker: {
+                    size: 4,
+                    color: mapSample.map(d => colors[d.neighbourhood_group] || '#FFF'),
+                    opacity: 0.8
+                },
+                text: mapSample.map(d => `${d.neighbourhood_group} - $${d.price} (${d.room_type})`),
+                hoverinfo: 'text'
+            }];
+
+            const mapLayout = {
+                ...getCommonLayout(),
+                margin: { t: 0, b: 0, l: 0, r: 0 },
+                // Limitamos los ejes estrictamente al bounding box cartográfico de NYC para que cuadre con la imagen CSS de fondo
+                xaxis: { visible: false, range: [-74.255, -73.700] },
+                yaxis: { visible: false, range: [40.495, 40.915] },
+                showlegend: false
+            };
+            Plotly.react('chart-map', mapData, mapLayout);
+
+            // 4. Boxplot (Precios limitados visualmente a <= 1000)
+            const boxData = Object.keys(pricesByBorough).map(k => ({
+                y: pricesByBorough[k].filter(p => p <= 1000), 
+                type: 'box',
+                name: k,
+                marker: { color: colors[k] }
+            }));
+            Plotly.react('chart-price-box', boxData, { ...getCommonLayout(), showlegend: false });
+
+            // 5. Scatter (Precio vs Reseñas)
+            const scatterValidData = filteredData.filter(d => !isNaN(d.price) && !isNaN(d.number_of_reviews));
+            const scatterSample = deterministicSample(scatterValidData, 2500);
+            
+            const scatterData = [{
+                x: scatterSample.map(d => d.price),
+                y: scatterSample.map(d => d.number_of_reviews),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    color: scatterSample.map(d => colors[d.neighbourhood_group] || '#FFF'),
+                    size: 5,
+                    opacity: 0.6
+                },
+                text: scatterSample.map(d => d.neighbourhood_group)
+            }];
+            Plotly.react('chart-scatter', scatterData, { 
+                ...getCommonLayout(), 
+                xaxis: { title: 'Precio por noche ($)', ...getCommonLayout().xaxis, range: [0, 1000] },
+                yaxis: { title: 'Número de Reseñas', ...getCommonLayout().yaxis }
+            });
+
+            // 6. Top 5 Barrios por Mediana
+            let hoodMedians = Object.keys(pricesByHood).map(k => ({
+                hood: k,
+                median: calculateMedian(pricesByHood[k]),
+                count: pricesByHood[k].length
+            })).filter(h => h.count >= 10)
+              .sort((a,b) => b.median - a.median)
+              .slice(0, 5)
+              .reverse(); 
+
+            const topHoodsData = [{
+                x: hoodMedians.map(h => h.median),
+                y: hoodMedians.map(h => h.hood),
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: colors['Manhattan'] },
+                text: hoodMedians.map(h => `$${h.median}`),
+                textposition: 'auto'
+            }];
+            Plotly.react('chart-top-hoods', topHoodsData, { 
+                ...getCommonLayout(), 
+                margin: { l: 120, r: 10, t: 10, b: 30 } 
+            });
+        }
+
+        // Ejecutar estado inicial limpio al iniciar
+        window.onload = () => initEmptyState();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+column,meaning,expected_type
+id,Unique listing identifier,Identifier
+name,Listing title,Text
+host_id,Host identifier,Identifier
+host_name,Host name,Text
+neighbourhood_group,Borough/group label,Categorical
+neighbourhood,Neighbourhood label,Categorical
+latitude,Listing latitude,Numeric
+longitude,Listing longitude,Numeric
+room_type,Listing type (e.g. entire home/private room/shared room),Categorical
+price,Advertised nightly price in USD,Numeric
+minimum_nights,Minimum stay requirement,Integer-like numeric
+number_of_reviews,Recorded review count,Integer-like numeric
+last_review,Most recent recorded review date,Date
+reviews_per_month,Recorded average monthly reviews,Numeric
+calculated_host_listings_count,Number of listings attributed to host,Integer-like numeric
+availability_365,Days listed as available in a year,Integer-like numeric

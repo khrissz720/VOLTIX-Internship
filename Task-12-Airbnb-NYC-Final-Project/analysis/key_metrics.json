@@ -1,0 +1,22 @@
+{
+  "rows_original": 48895,
+  "columns_original": 16,
+  "rows_cleaned": 48895,
+  "columns_cleaned": 22,
+  "exact_duplicates_removed": 0,
+  "missing_name": 16,
+  "missing_host_name": 21,
+  "median_price": 106.0,
+  "mean_price": 152.7206871868289,
+  "mean_price_nonzero": 152.75505277800508,
+  "zero_price_count": 11,
+  "price_iqr_upper_fence": 334.0,
+  "price_outlier_count": 2972,
+  "unique_hosts": 37457,
+  "neighbourhood_groups": 5,
+  "room_types": 3,
+  "listings_with_reviews": 38843,
+  "median_reviews": 5.0,
+  "mean_reviews": 23.274465691788528,
+  "median_availability": 45.0
+}
